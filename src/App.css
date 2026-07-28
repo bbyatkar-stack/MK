@@ -16,6 +16,26 @@
   font-variant-numeric: tabular-nums;
 }
 
+.hero-block {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.hero-art {
+  width: 200px;
+  height: auto;
+  margin: 0 auto 24px;
+  display: block;
+}
+
+.hero-block h1 {
+  margin: 0 0 10px;
+}
+
+.hero-block .page-subtitle {
+  margin: 0 auto;
+}
+
 .top-bar {
   display: flex;
   align-items: center;
@@ -24,11 +44,10 @@
   padding: 20px 32px 0;
 }
 
-.top-balance-wrap {
+.top-profile-wrap {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
 .top-balance {
@@ -46,6 +65,48 @@
   color: var(--text);
 }
 
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow);
+  z-index: 20;
+  min-width: 220px;
+  text-align: left;
+}
+
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.profile-section:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.profile-section .text-input {
+  max-width: 100%;
+}
+
+.profile-email {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-h);
+  margin: 0;
+  word-break: break-all;
+}
+
 .topup-options-float {
   position: absolute;
   top: calc(100% + 8px);
@@ -59,7 +120,16 @@
   gap: 4px;
   box-shadow: var(--shadow);
   z-index: 20;
-  min-width: 160px;
+  min-width: 170px;
+}
+
+.topup-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  margin: 2px 4px 4px;
 }
 
 .topup-option {
@@ -554,6 +624,14 @@ textarea.text-input {
   align-items: center;
   gap: 10px;
   padding: 0 2px;
+}
+
+.brand-link {
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
 }
 
 .sidebar .mark {

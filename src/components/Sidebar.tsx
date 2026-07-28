@@ -25,33 +25,12 @@ function Sidebar({
 
   return (
     <aside className="sidebar">
-      <div className="brand-row">
+      <button type="button" className="brand-row brand-link" onClick={() => onViewChange('catalog')}>
         <div className="mark">M</div>
         <div className="word">MK</div>
-      </div>
+      </button>
 
       <nav className="nav-list-c">
-        <button
-          type="button"
-          className={view === 'catalog' ? 'nav-item-c is-active' : 'nav-item-c'}
-          onClick={() => onViewChange('catalog')}
-        >
-          <svg
-            className="nav-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="3" width="7" height="7" rx="1.5" />
-            <rect x="14" y="3" width="7" height="7" rx="1.5" />
-            <rect x="3" y="14" width="7" height="7" rx="1.5" />
-            <rect x="14" y="14" width="7" height="7" rx="1.5" />
-          </svg>
-          Каталог
-        </button>
         <button
           type="button"
           className={view === 'generations' ? 'nav-item-c is-active' : 'nav-item-c'}

@@ -11,8 +11,14 @@ interface TopBarProps {
 }
 
 function TopBar({ session, profile, onProfileChanged }: TopBarProps) {
-  const [topUpOpen, setTopUpOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [passwordFormOpen, setPasswordFormOpen] = useState(false)
   const [buying, setBuying] = useState<number | null>(null)
+
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false)
 
   async function handleTopUp(points: number) {
     if (!profile) return
@@ -24,7 +30,38 @@ function TopBar({ session, profile, onProfileChanged }: TopBarProps) {
     setBuying(null)
     if (!error) {
       onProfileChanged()
-      setTopUpOpen(false)
+    }
+  }
+
+  async function handleChangePassword() {
+    setPasswordError(null)
+
+    if (newPassword.length < 6) {
+      setPasswordError('Пароль должен быть не короче 6 символов')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Пароли не совпадают')
+      return
+    }
+
+    setPasswordSubmitting(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+
+      if (error) {
+        setPasswordError(error.message)
+        return
+      }
+
+      setNewPassword('')
+      setConfirmPassword('')
+      setPasswordFormOpen(false)
+      setProfileOpen(false)
+    } catch (e) {
+      setPasswordError(e instanceof Error ? e.message : 'Не удалось сменить пароль')
+    } finally {
+      setPasswordSubmitting(false)
     }
   }
 
@@ -36,26 +73,82 @@ function TopBar({ session, profile, onProfileChanged }: TopBarProps) {
 
   return (
     <div className="top-bar">
-      <div className="top-balance-wrap">
-        <div className="top-balance tnum">
-          {profile.balance} <span>баллов</span>
-        </div>
-        <button type="button" className="secondary-button" onClick={() => setTopUpOpen((o) => !o)}>
-          Пополнить
+      <div className="top-balance tnum">
+        {profile.balance} <span>баллов</span>
+      </div>
+
+      <div className="top-profile-wrap">
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => setProfileOpen((o) => !o)}
+        >
+          Профиль
         </button>
-        {topUpOpen && (
-          <div className="topup-options topup-options-float">
-            {POINT_PACKAGES.map((pkg) => (
-              <button
-                key={pkg.points}
-                type="button"
-                className="topup-option"
-                disabled={buying !== null}
-                onClick={() => handleTopUp(pkg.points)}
-              >
-                {buying === pkg.points ? 'Начисляем...' : `${pkg.label} (+${pkg.points})`}
-              </button>
-            ))}
+        {profileOpen && (
+          <div className="profile-dropdown">
+            <div className="profile-section">
+              <p className="topup-label">Логин</p>
+              <p className="profile-email">{session.user.email}</p>
+            </div>
+
+            <div className="profile-section">
+              {!passwordFormOpen ? (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setPasswordFormOpen(true)}
+                >
+                  Сменить пароль
+                </button>
+              ) : (
+                <>
+                  <p className="topup-label">Новый пароль</p>
+                  <input
+                    type="password"
+                    placeholder="Новый пароль"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="text-input"
+                    minLength={6}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Повторите пароль"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="text-input"
+                    minLength={6}
+                  />
+                  {passwordError && <p className="form-error">{passwordError}</p>}
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={passwordSubmitting}
+                    onClick={handleChangePassword}
+                  >
+                    {passwordSubmitting ? 'Сохраняем...' : 'Сохранить пароль'}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="profile-section">
+              <p className="topup-label">Пополнить баланс</p>
+              <div className="topup-options">
+                {POINT_PACKAGES.map((pkg) => (
+                  <button
+                    key={pkg.points}
+                    type="button"
+                    className="topup-option"
+                    disabled={buying !== null}
+                    onClick={() => handleTopUp(pkg.points)}
+                  >
+                    {buying === pkg.points ? 'Начисляем...' : `${pkg.label} (+${pkg.points})`}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
