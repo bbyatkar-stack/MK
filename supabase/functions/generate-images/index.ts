@@ -107,10 +107,70 @@ async function generateOneImage(
   }
 }
 
+// Отдельный, узко сфокусированный запрос только про длину/вырез/рукав —
+// когда эта просьба смешана с «творческим» заголовком и описанием, модель
+// почти всегда её игнорирует. В одиночном запросе соблюдается надёжно.
+async function getClothingDetails(
+  apiKey: string,
+  refImage: { base64: string; mimeType: string },
+): Promise<string | null> {
+  const resp = await fetchWithRetry(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text:
+                  'Посмотри на фото предмета одежды. Ответь СТРОГО в формате JSON, ' +
+                  'без пояснений и без markdown-разметки, заполнив каждое поле ' +
+                  'одним-двумя словами на русском: ' +
+                  '{"length": "длина изделия, например: миди, макси, до колена, укороченное", ' +
+                  '"neckline": "форма выреза или воротника, например: V-образный, круглый, лацканы", ' +
+                  '"sleeve": "длина рукава, например: длинный, короткий, 3/4, без рукавов"}',
+              },
+              { inlineData: { mimeType: refImage.mimeType, data: refImage.base64 } },
+            ],
+          },
+        ],
+      }),
+    },
+  )
+
+  if (!resp.ok) return null
+
+  const data = await resp.json()
+  const raw = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}')
+    .trim()
+    .replace(/^```json/i, '')
+    .replace(/^```/, '')
+    .replace(/```$/, '')
+    .trim()
+
+  try {
+    const parsed = JSON.parse(raw)
+    const details = [
+      parsed.length ? `Длина: ${String(parsed.length).trim()}` : '',
+      parsed.neckline ? `Вырез: ${String(parsed.neckline).trim()}` : '',
+      parsed.sleeve ? `Рукав: ${String(parsed.sleeve).trim()}` : '',
+    ]
+      .filter(Boolean)
+      .join('. ')
+    return details ? `${details}.` : null
+  } catch {
+    return null
+  }
+}
+
 async function generateTitleAndDescription(
   apiKey: string,
   context: string,
   needDescription: boolean,
+  isClothing: boolean,
+  refImage: { base64: string; mimeType: string },
 ): Promise<{ title: string | null; description: string | null; debug?: string }> {
   const instructions = needDescription
     ? 'Придумай короткий привлекательный заголовок (3-6 слов) и короткое описание ' +
@@ -131,6 +191,7 @@ async function generateTitleAndDescription(
                   `${instructions} Контекст: ${context}. Ответь СТРОГО в формате JSON, ` +
                   'без пояснений и без markdown-разметки: {"title": "...", "description": "..."}',
               },
+              { inlineData: { mimeType: refImage.mimeType, data: refImage.base64 } },
             ],
           },
         ],
@@ -151,9 +212,16 @@ async function generateTitleAndDescription(
     .trim()
   try {
     const parsed = JSON.parse(raw)
+    let description = parsed.description?.trim() || null
+
+    if (isClothing && description) {
+      const clothingDetails = await getClothingDetails(apiKey, refImage)
+      if (clothingDetails) description = `${description} ${clothingDetails}`
+    }
+
     return {
       title: parsed.title?.trim() || null,
-      description: parsed.description?.trim() || null,
+      description,
     }
   } catch {
     return { title: null, description: null, debug: `Не разобрался с ответом: ${raw}` }
@@ -221,6 +289,8 @@ Deno.serve(async (req) => {
       apiKey,
       `товар «${productName}», категория ${category ?? 'не указана'}, тип генерации ${type}`,
       type === 'card',
+      category === 'Одежда и обувь',
+      refImage,
     )
 
     await supabaseAdmin.from('generation_images').insert(
