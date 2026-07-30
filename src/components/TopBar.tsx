@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
-import { POINT_PACKAGES } from '../types'
+import { PAID_PACKAGES, POINT_PACKAGES } from '../types'
 import type { Profile } from '../types'
 
 interface TopBarProps {
@@ -20,6 +20,9 @@ function TopBar({ session, profile, onProfileChanged }: TopBarProps) {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSubmitting, setPasswordSubmitting] = useState(false)
 
+  const [paying, setPaying] = useState<string | null>(null)
+  const [payError, setPayError] = useState<string | null>(null)
+
   async function handleTopUp(points: number) {
     if (!profile) return
     setBuying(points)
@@ -31,6 +34,23 @@ function TopBar({ session, profile, onProfileChanged }: TopBarProps) {
     if (!error) {
       onProfileChanged()
     }
+  }
+
+  async function handlePay(packageId: string) {
+    setPaying(packageId)
+    setPayError(null)
+
+    const { data, error } = await supabase.functions.invoke('create-payment', {
+      body: { package_id: packageId },
+    })
+
+    if (error || !data?.confirmation_url) {
+      setPayError(data?.error || error?.message || 'Не удалось создать платёж')
+      setPaying(null)
+      return
+    }
+
+    window.location.href = data.confirmation_url
   }
 
   async function handleChangePassword() {
@@ -134,7 +154,27 @@ function TopBar({ session, profile, onProfileChanged }: TopBarProps) {
             </div>
 
             <div className="profile-section">
-              <p className="topup-label">Пополнить баланс</p>
+              <p className="topup-label">Купить баллы (ЮKassa, тест)</p>
+              <div className="topup-options">
+                {PAID_PACKAGES.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    className="topup-option"
+                    disabled={paying !== null}
+                    onClick={() => handlePay(pkg.id)}
+                  >
+                    {paying === pkg.id
+                      ? 'Создаём платёж...'
+                      : `${pkg.label} — ${pkg.points} баллов за ${pkg.priceRub} ₽`}
+                  </button>
+                ))}
+              </div>
+              {payError && <p className="form-error">{payError}</p>}
+            </div>
+
+            <div className="profile-section">
+              <p className="topup-label">Пополнить бесплатно (тест)</p>
               <div className="topup-options">
                 {POINT_PACKAGES.map((pkg) => (
                   <button

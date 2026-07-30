@@ -31,6 +31,14 @@ export const POINT_PACKAGES = [
   { label: 'Большой', points: 1500 },
 ] as const
 
+// Цены/баллы для сверки на фронте — источник истины всё равно на сервере
+// (в самой функции create-payment), клиент передаёт только package_id.
+export const PAID_PACKAGES = [
+  { id: 'starter', label: 'Starter', points: 100, priceRub: 490 },
+  { id: 'growth', label: 'Growth', points: 300, priceRub: 1290 },
+  { id: 'pro', label: 'Pro', points: 750, priceRub: 2790 },
+] as const
+
 export type GenerationType = 'photo' | 'card'
 
 export const POINTS_PER_ITEM: Record<GenerationType, number> = {

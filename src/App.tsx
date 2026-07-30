@@ -14,7 +14,7 @@ import type { Category, Product } from './types'
 import './App.css'
 
 function App() {
-  const { session } = useSession()
+  const { session, loading: sessionLoading } = useSession()
   const { profile, reload: reloadProfile } = useProfile(session)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -24,6 +24,32 @@ function App() {
   const [generationsRefreshKey, setGenerationsRefreshKey] = useState(0)
   const [view, setView] = useState<View>('catalog')
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('Все')
+  const [paymentProcessing, setPaymentProcessing] = useState(
+    () => new URLSearchParams(window.location.search).get('payment') === 'processing',
+  )
+
+  // Вернулись с оплаты ЮKassa — баллы начисляет вебхук асинхронно, поэтому
+  // показываем баннер и несколько раз перепроверяем баланс, пока он не придёт.
+  useEffect(() => {
+    if (!paymentProcessing) return
+
+    const url = new URL(window.location.href)
+    url.searchParams.delete('payment')
+    window.history.replaceState({}, '', url.toString())
+
+    let attempts = 0
+    const interval = setInterval(() => {
+      attempts += 1
+      reloadProfile()
+      if (attempts >= 6) {
+        clearInterval(interval)
+        setPaymentProcessing(false)
+      }
+    }, 3000)
+
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentProcessing])
 
   useEffect(() => {
     async function loadProducts() {
@@ -67,19 +93,32 @@ function App() {
       />
 
       <main className="app-main">
-        <TopBar session={session} profile={profile} onProfileChanged={reloadProfile} />
+        {!sessionLoading && (
+          <TopBar session={session} profile={profile} onProfileChanged={reloadProfile} />
+        )}
 
         <div className="page">
-          {!session && (
+          {paymentProcessing && (
+            <div className="payment-banner">
+              <span>Оплата обрабатывается — баланс обновится автоматически через несколько секунд.</span>
+              <button type="button" className="link-button" onClick={() => setPaymentProcessing(false)}>
+                Закрыть
+              </button>
+            </div>
+          )}
+
+          {sessionLoading && <p className="empty-state">Загрузка...</p>}
+
+          {!sessionLoading && !session && (
             <header className="page-header">
               <h1>MK</h1>
               <p className="page-subtitle">Каталог товаров и генерация фото с помощью ИИ.</p>
             </header>
           )}
 
-          <AuthPanel session={session} />
+          {!sessionLoading && <AuthPanel session={session} />}
 
-          {view === 'catalog' && (
+          {!sessionLoading && view === 'catalog' && (
             <>
               <AddProductForm session={session} onAdd={handleAdd} />
 
@@ -100,7 +139,7 @@ function App() {
             </>
           )}
 
-          {view === 'generations' && (
+          {!sessionLoading && view === 'generations' && (
             <GenerationsCatalog session={session} refreshKey={generationsRefreshKey} />
           )}
         </div>
